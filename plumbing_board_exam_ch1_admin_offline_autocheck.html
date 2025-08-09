@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plumbing Board Exam — Chapter 1: Administration (Offline)</title>
+<style>
+/* Minimal "Tailwind-like" utility classes used in this page (subset handcrafted) */
+:root{
+  --bg:#f1f5f9; --card:#ffffff; --muted:#6b7280; --accent:#0ea5e9; --green:#bbf7d0; --red:#fecaca; --border:#e6e8eb;
+  --radius:12px;
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body{background:var(--bg);margin:0;padding:20px;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.container{width:100%;max-width:980px;background:var(--card);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(2,6,23,0.08);}
+.header h1{margin:0;font-size:20px;}
+.header p{margin:6px 0 0;color:var(--muted);font-size:13px;}
+.flex{display:flex;align-items:center;gap:12px;}
+.row{display:flex;justify-content:space-between;align-items:center;}
+.btn{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;}
+.btn-primary{background:var(--accent);color:#fff;border:none;}
+.btn-ghost{background:transparent;border:1px solid var(--border);}
+.small{font-size:13px;color:var(--muted);}
+.progress{font-size:13px;color:var(--muted);}
+
+/* quiz area */
+.qcard{margin-top:14px;padding:16px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#fbfbfd);}
+.qheader{display:flex;justify-content:space-between;align-items:flex-start;}
+.qtext{font-size:18px;margin:8px 0 12px;}
+.options{display:flex;flex-direction:column;gap:8px;}
+.option{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;border:1px solid #eef2f6;cursor:pointer;transition:transform .08s,box-shadow .08s;}
+.option:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(11,15,30,0.06);}
+.option input{width:18px;height:18px;}
+.option-label{font-size:15px;color:#0f172a;}
+.option.correct{background:var(--green);border-color:#86efac;}
+.option.incorrect{background:var(--red);border-color:#fca5a5;}
+
+/* feedback/rationale box */
+.rationale{margin-top:12px;padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);display:none;}
+.rationale.show{display:block;}
+.rationale .title{font-weight:600;margin-bottom:6px;}
+.rationale .text{font-size:14px;color:var(--muted);}
+
+/* nav */
+.nav{display:flex;gap:8px;margin-top:12px;}
+.counter{font-size:14px;color:var(--muted);}
+
+/* end screen */
+.endscreen{padding:14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#fbfbfd);margin-top:12px;}
+.answers{margin-top:12px;max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:8px;}
+.answer-item{padding:10px;border-radius:8px;border:1px solid #f1f5f9;background:#fff;}
+.answer-item .q{font-weight:600;font-size:14px;margin-bottom:6px;}
+.small-muted{font-size:13px;color:var(--muted);margin-top:6px;}
+.footer{margin-top:10px;font-size:12px;color:var(--muted);}
+
+/* responsive */
+@media (max-width:640px){
+  .qtext{font-size:16px;}
+  .container{padding:14px;}
+}
+</style>
+</head>
+<body>
+<div class="container" role="main">
+  <div class="header">
+    <h1>Plumbing Board-style Exam — Chapter 1: Administration (Offline)</h1>
+    <p class="small">Continuous exam (75 items). Questions shuffle each attempt. Immediate per-question feedback with simple rationale. CSV export at end.</p>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="startScreen" style="margin-top:12px;">
+    <p class="small-muted">This exam contains Part 1 (50 knowledge items) and Part 2 (25 situational items). Ready to start?</p>
+    <div style="margin-top:10px;" class="flex">
+      <button id="startBtn" class="btn btn-primary">Start Exam</button>
+      <button id="shuffleBtn" class="btn btn-ghost">Shuffle Questions (Preview)</button>
+      <div style="margin-left:auto" class="small">Total questions: <strong id="totalCnt">75</strong></div>
+    </div>
+  </div>
+
+  <!-- Quiz Screen -->
+  <div id="quizScreen" style="display:none;">
+    <div class="qcard" aria-live="polite">
+      <div class="qheader row">
+        <div>
+          <div class="progress">Question <span id="qIndex">1</span> / <span id="qCount">75</span></div>
+          <div class="small-muted" id="scoreDisp">Answered correct so far: 0</div>
+        </div>
+        <div class="counter small-muted">Part: <span id="qPart">1</span></div>
+      </div>
+
+      <div class="qtext" id="questionText">Question appears here</div>
+
+      <form id="optionsForm" class="options" aria-labelledby="questionText"></form>
+
+      <div class="rationale" id="rationaleBox" role="status" aria-live="polite">
+        <div class="title" id="rationaleTitle">Rationale</div>
+        <div class="text" id="rationaleText">Explanation goes here.</div>
+      </div>
+
+      <div class="nav">
+        <button id="backBtn" class="btn">Back</button>
+        <button id="checkBtn" class="btn btn-primary">Check Answer</button>
+        <button id="nextBtn" class="btn">Next</button>
+        <div style="margin-left:auto" class="small-muted">Score: <span id="scoreSimple">0</span>/<span id="qCount2">75</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;" class="small-muted">You may change your answer anytime before clicking <strong>Check Answer</strong>. Feedback appears immediately after checking.</div>
+  </div>
+
+  <!-- End Screen -->
+  <div id="endScreen" style="display:none;margin-top:12px;">
+    <div class="endscreen">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1">
+          <div id="finalScore" style="font-weight:700;font-size:16px">Final score here</div>
+          <div class="small-muted" id="finalPercent">Percent</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="downloadCsvBtn" class="btn btn-primary">Export Results to CSV</button>
+          <button id="tryAgainBtn" class="btn btn-ghost">Try Again</button>
+        </div>
+      </div>
+
+      <div class="answers" id="answersList" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="footer small-muted">Rationales are written simply, like explaining to an elementary student.</div>
+</div>
+
+<script>
+/* Questions data derived strictly from the provided Chapter 1: Administration text.
+   75 items: 1-50 knowledge, 51-75 situational. Rationale phrased simply.
+*/
+const QUESTIONS = [
+  {id:1, part:1, q:"Who shall file an application at the office of the Building Official on behalf of the building owner?", choices:["Any homeowner","A Registered and Licensed Master Plumber","A barangay official","The city mayor"], answer:1, rationale:"A Registered and Licensed Master Plumber is the trained professional who files permit applications for the owner."},
+  {id:2, part:1, q:"What must the application identify and describe?", choices:["The plumbing work covered","The owner's lunch menu","The plumber's hobbies","The building color"], answer:0, rationale:"The application must say what plumbing work will be done so officials know what they are approving."},
+  {id:3, part:1, q:"Which description is required in the application?", choices:["The land upon which the plumbing work is to be done","The owner's favorite movie","The plumber's car model","The nearest school"], answer:0, rationale:"They need to know the location (the land) where the plumbing will take place."},
+  {id:4, part:1, q:"What must the application indicate about the building?", choices:["The use or occupancy","The owner's age","The weather","The plumber's shoe size"], answer:0, rationale:"Use or occupancy (like house, store) matters because plumbing rules depend on how the building is used."},
+  {id:5, part:1, q:"Which of these documents must accompany the application?", choices:["Plans, drawings, diagrams, computations and technical specifications","A comic book","A food recipe","An invitation card"], answer:0, rationale:"Officials require technical papers so they can check the plumbing design for safety."},
+  {id:6, part:1, q:"Who must sign the application?", choices:["The Owner or permittee","A neighbor","The plumber only","A shopkeeper"], answer:0, rationale:"The owner or the permittee signs to confirm they agree to the work."},
+  {id:7, part:1, q:"Who must sign and seal the application and plans besides the owner?", choices:["The Registered and Licensed Master Plumber","The security guard","The electrician","No one"], answer:0, rationale:"A Registered and Licensed Master Plumber signs and seals the plans to show a qualified person prepared them."},
+  {id:8, part:1, q:"Plans and specifications shall be prepared, signed and sealed by whom?", choices:["Registered & Licensed Master Plumber","A civil engineer only","A contractor's helper","A student"], answer:0, rationale:"The rules require a Registered & Licensed Master Plumber to prepare and seal plumbing plans."},
+  {id:9, part:1, q:"How many sets of plans and required documents shall be submitted?", choices:["One set","Two sets","Six sets","Ten sets"], answer:2, rationale:"The regulation requires submission of six sets."},
+  {id:10, part:1, q:"What may the Administrative Authority issue for part of a large or complicated plumbing system before the whole is approved?", choices:["Partial Permit","No permit","Full demolition","A warning only"], answer:0, rationale:"A Partial Permit allows work on part of the system while the rest is being reviewed."},
+  {id:11, part:1, q:"How many sets of approved plans does the Administrative Authority retain?", choices:["One set","Two sets","All six sets","None"], answer:0, rationale:"The Administrative Authority keeps one set for their records."},
+  {id:12, part:1, q:"How many sets are returned to the applicant after approval?", choices:["One set","Two sets","Three sets","Four sets"], answer:1, rationale:"Two sets are given back to the applicant to keep."},
+  {id:13, part:1, q:"How many sets must be kept at the jobsite?", choices:["None","One set","Two sets","All six sets"], answer:1, rationale:"One set is kept at the jobsite so inspectors and workers can refer to it."},
+  {id:14, part:1, q:"When does a permit normally expire from the date of issuance?", choices:["Six months","One year","Two years","Thirty days"], answer:1, rationale:"A permit expires one year after it was issued."},
+  {id:15, part:1, q:"If the work is suspended or abandoned, within how many days does the permit expire?", choices:["30 days","60 days","120 days","365 days"], answer:2, rationale:"If work stops or is abandoned, the permit may expire within 120 days."},
+  {id:16, part:1, q:"Which of these is NOT an application for existing plumbing systems?", choices:["Additions, Alterations or Repairs","Changes in Building Occupancy","Maintenance","Selling the building"], answer:3, rationale:"Selling the building is not listed; the others are types of existing plumbing system applications."},
+  {id:17, part:1, q:"Which action requires an application for existing plumbing system?", choices:["Moved buildings","Painting the walls","Changing curtains","Buying furniture"], answer:0, rationale:"When a building is moved, plumbing is affected so it needs an application."},
+  {id:18, part:1, q:"No portion of any plumbing system shall be concealed until what happens?", choices:["It is inspected and approved","It is painted","It is photographed","It is removed"], answer:0, rationale:"Pipes must be inspected and approved before being hidden so inspectors can check them."},
+  {id:19, part:1, q:"All administrative plumbing personnel and plumbing inspectors shall be what?", choices:["Registered and Licensed Master Plumbers","Volunteers","Security guards","Electricians"], answer:0, rationale:"Inspectors must be Registered and Licensed Master Plumbers (professionals)."},
+
+  {id:20, part:1, q:"Inspection request must be filed at least how many working days before inspection?", choices:["One day","Two days","Three working days","Seven days"], answer:2, rationale:"Inspection requests must be filed at least three working days before the inspection."},
+  {id:21, part:1, q:"Inspection request must be in writing and jointly signed by whom?", choices:["Owner and the Registered & Licensed Master Plumber-Contractor","Owner and the neighbor","Plumber only","Mayor and owner"], answer:0, rationale:"The owner and the Registered & Licensed Master Plumber-Contractor must both sign the request."},
+  {id:22, part:1, q:"Permanent connection shall be approved by whom?", choices:["Administrative Authority","The plumber","The owner","No one"], answer:0, rationale:"Permanent connections need approval from the Administrative Authority."},
+  {id:23, part:1, q:"Temporary connection shall be what by the Administrative Authority?", choices:["Ignored","Endorsed","Denied automatically","Installed by the owner"], answer:1, rationale:"Temporary connections must be endorsed (officially allowed) by the Administrative Authority."},
+  {id:24, part:1, q:"Which items are part of plans & specifications for all occupancies?", choices:["Bill of materials and technical specifications","Party invitations","A food menu","A seating plan"], answer:0, rationale:"Plans must include bill of materials and technical specifications."},
+  {id:25, part:1, q:"Plans and specifications shall be prepared, signed and sealed pursuant to which act (as amended)?", choices:["Republic Act 1378","Traffic Act","Education Act","Food Code"], answer:0, rationale:"The requirement cites Republic Act 1378 (as amended)."},
+  {id:26, part:1, q:"Who signs and seals plumbing plans without limitation?", choices:["Registered & Licensed Master Plumber","A student","A contractor's assistant","A neighbor"], answer:0, rationale:"The text specifies the Registered & Licensed Master Plumber signs and seals the plans."},
+  {id:27, part:1, q:"How many sets shall be submitted for plans, drawings and documents?", choices:["2 sets","4 sets","6 sets","8 sets"], answer:2, rationale:"Six sets must be submitted."},
+  {id:28, part:1, q:"Why might an authority issue a partial permit?", choices:["To allow part of a large or complicated system while the rest is pending","To reject everything","To delay work","To change ownership"], answer:0, rationale:"A partial permit helps start some work when the whole plan isn't finished."},
+  {id:29, part:1, q:"Retention rules state how many sets are kept by the Admin Authority?", choices:["One set","Two sets","Three sets","All sets"], answer:0, rationale:"One set is retained by the Administrative Authority."},
+  {id:30, part:1, q:"What is true about permit expiration?", choices:["It expires one year from issuance","It never expires","It expires daily","It expires after 10 years"], answer:0, rationale:"Permits expire one year from the date they were issued."},
+
+  {id:31, part:1, q:"If work is suspended, the permit may expire within how many days?", choices:["10 days","30 days","120 days","365 days"], answer:2, rationale:"Suspended or abandoned work can lead to permit expiration within 120 days."},
+  {id:32, part:1, q:"Before concealing plumbing, what must be done?", choices:["Inspection and approval","Painting","Cleaning","Nothing"], answer:0, rationale:"Concealment must wait until inspection and approval so errors are found first."},
+  {id:33, part:1, q:"Who files applications for additions, alterations or repairs to existing plumbing?", choices:["Registered & Licensed Master Plumber","Any passerby","The mailman","A child"], answer:0, rationale:"An RLM is required to file these applications."},
+  {id:34, part:1, q:"Inspection request must be signed by owner and whom?", choices:["Registered & Licensed Master Plumber-Contractor","Neighbor","Mayor","Contractor's helper"], answer:0, rationale:"It must be jointly signed by the owner and the Registered & Licensed Master Plumber-Contractor."},
+  {id:35, part:1, q:"Maintenance of plumbing is considered what?", choices:["A type of application for existing plumbing systems","Not allowed","Only for new buildings","A decoration"], answer:0, rationale:"Maintenance is listed as a reason to apply under existing plumbing system rules."},
+  {id:36, part:1, q:"Who among plumbing staff must be registered and licensed?", choices:["Administrative Plumbing Personnel and Plumbing Inspectors","Visitors","Security","Drivers"], answer:0, rationale:"Those official positions must be Registered & Licensed Master Plumbers."},
+  {id:37, part:1, q:"What should accompany the plans besides drawings?", choices:["Computations and technical specifications","A painting","A handshake","An email"], answer:0, rationale:"Computations and technical specs show the design is safe and correct."},
+  {id:38, part:1, q:"Which set is kept at the jobsite?", choices:["One set of approved plans","Two sets","No sets","All six sets"], answer:0, rationale:"One approved set remains at the jobsite for reference."},
+  {id:39, part:1, q:"What does 'permittee' mean in signing the application?", choices:["The person granted the permit","The building","The tool","A document"], answer:0, rationale:"A permittee is the person who will get the permit; they can sign the application."},
+  {id:40, part:1, q:"Plans for all types of occupancy must be prepared by whom?", choices:["Registered & Licensed Master Plumber","A painter","A student","An accountant"], answer:0, rationale:"All occupancy types require plans prepared by an RLM."},
+
+  {id:41, part:1, q:"What does it mean that temporary connection shall be endorsed by Administrative Authority?", choices:["It must be officially approved","It must be painted","It must be hidden","It must be sold"], answer:0, rationale:"Endorse means the authority officially approves the temporary connection."},
+  {id:42, part:1, q:"What is the purpose of the bill of materials?", choices:["Shows what materials will be used","Lists the owner's friends","Shows menu","Lists songs"], answer:0, rationale:"A bill lists materials so inspectors know what parts are used."},
+  {id:43, part:1, q:"Who gets two sets of the approved documents?", choices:["The applicant","The administrative authority only","The neighbor","No one"], answer:0, rationale:"Two sets are returned to the applicant."},
+  {id:44, part:1, q:"Which documents must be signed & sealed by the RLM?", choices:["Plans and specifications","A grocery list","A postcard","A newspaper"], answer:0, rationale:"Plans and specs must be signed and sealed by the Registered & Licensed Master Plumber."},
+  {id:45, part:1, q:"What permit allows starting part of the work before all plans are ready?", choices:["Partial Permit","Full Permit","No Permit","Temporary Permit"], answer:0, rationale:"A Partial Permit lets you start part of a large job early."},
+  {id:46, part:1, q:"Which is NOT listed as application for existing plumbing system?", choices:["Cleaning windows","Additions","Maintenance","Moved buildings"], answer:0, rationale:"Cleaning windows isn't listed as part of plumbing system applications."},
+  {id:47, part:1, q:"How many working days before must inspection be requested?", choices:["One","Two","Three working days","Five"], answer:2, rationale:"You must ask for inspection at least three working days before so officials can schedule."},
+  {id:48, part:1, q:"Which set is to be kept at the jobsite per retention rules?", choices:["One set of approved plans","None","All six sets","Two sets"], answer:0, rationale:"One approved set stays at the jobsite for reference."},
+  {id:49, part:1, q:"What must accompany the application and be signed & sealed by the RLM?", choices:["Design analyses/computations","A birthday card","A flyer","A blank paper"], answer:0, rationale:"Design analyses and computations must be part of the documents signed by the RLM."},
+  {id:50, part:1, q:"Who jointly signs the inspection request with the owner?", choices:["The Registered & Licensed Master Plumber-Contractor","The neighbor","The postman","A child"], answer:0, rationale:"The owner and the Registered & Licensed Master Plumber-Contractor must sign inspection requests."},
+
+  /* Part 2 situational 51-75 */
+  {id:51, part:2, q:"You are the RLM preparing to file for a small shop. What must you include with the application?", choices:["Plans, drawings, bill of materials and technical specs","Only a phone call","A painting","A receipt"], answer:0, rationale:"You must include the technical documents so the office can check the design."},
+  {id:52, part:2, q:"A building owner refuses to sign the application. What is required?", choices:["Owner or permittee must sign the application","No signature is needed","Only the plumber signs","The mayor signs"], answer:0, rationale:"The rule requires the owner or permittee to sign the application."},
+  {id:53, part:2, q:"After approval, where should one set of plans be kept?", choices:["At the jobsite","In a cafe","With a friend","At the mayor's office"], answer:0, rationale:"One approved set must be kept at the jobsite for inspectors and workers."},
+  {id:54, part:2, q:"You filed inspection request only two working days before. What is the issue?", choices:["It must be filed at least three working days before","It's okay","File one day after","Call the inspector instead"], answer:0, rationale:"Requests must be filed at least three working days before the inspection."},
+  {id:55, part:2, q:"If your permit was issued 11 months ago and work stops for 4 months, what happens?", choices:["It may expire within 120 days of suspension","It becomes permanent","It doubles","Nothing"], answer:0, rationale:"If work is suspended or abandoned, the permit can expire within 120 days."},
+  {id:56, part:2, q:"You want to build part of a complicated system now. What can you request?", choices:["Partial Permit","A refund","A new contractor","A holiday"], answer:0, rationale:"You can ask for a Partial Permit to build a part while the rest is pending."},
+  {id:57, part:2, q:"Inspector finds pipes already concealed behind wall. What's the problem?", choices:["Pipes were concealed before inspection (not allowed)","No problem","Inspector must hide them","Inspector will paint them"], answer:0, rationale:"Pipes must be inspected and approved before they are concealed."},
+  {id:58, part:2, q:"You need a temporary water connection for testing. What is needed?", choices:["Endorsement by Administrative Authority","No permission","Only a phone call","A picture"], answer:0, rationale:"Temporary connections must be endorsed by the Administrative Authority."},
+  {id:59, part:2, q:"Inspector asks for plans at site but you left them in the office. What should be at the jobsite?", choices:["One set of approved plans","A sandwich","Nothing","A calendar"], answer:0, rationale:"One approved set must be kept at the jobsite for inspections."},
+  {id:60, part:2, q:"Preparing plans for a public building: who must prepare, sign and seal them?", choices:["Registered & Licensed Master Plumber","A student","A passerby","The owner only"], answer:0, rationale:"An RLM must prepare, sign and seal plans for any building."},
+  {id:61, part:2, q:"How many sets does the Administrative Authority retain after approval?", choices:["One set","All sets","None","Three sets"], answer:0, rationale:"The Admin Authority keeps one set for their records."},
+  {id:62, part:2, q:"Who must sign inspection requests along with the owner?", choices:["Registered & Licensed Master Plumber-Contractor","Neighbor","Contractor's helper","A child"], answer:0, rationale:"The owner and the Registered & Licensed Master Plumber-Contractor must sign jointly."},
+  {id:63, part:2, q:"Are computations required when submitting plans for an alteration?", choices:["Yes, computations and analyses are required","No computations ever","Only for roofs","Only for electrical"], answer:0, rationale:"Computations and analyses are required to show the design is safe."},
+  {id:64, part:2, q:"Filing for a moved building falls under which application type?", choices:["Application for existing plumbing system - moved buildings","New building only","No application","Only for painting"], answer:0, rationale:"Moved buildings are listed under applications for existing plumbing systems."},
+  {id:65, part:2, q:"Who must sign and seal the plans?", choices:["Registered & Licensed Master Plumber","The owner only","Any worker","No signature needed"], answer:0, rationale:"Plans must be signed and sealed by an RLM."},
+  {id:66, part:2, q:"Which law is referenced for preparing and sealing plans?", choices:["Republic Act 1378","Traffic Law","Food Code","Education Act"], answer:0, rationale:"The text references Republic Act 1378 (as amended)."},
+  {id:67, part:2, q:"Can someone who is not a Registered & Licensed Master Plumber be an inspector?", choices:["No — inspectors shall be Registered & Licensed Master Plumbers","Yes, anyone can inspect","Only the mayor inspects","Neighbors can inspect"], answer:0, rationale:"Inspectors must be Registered & Licensed Master Plumbers as required."},
+  {id:68, part:2, q:"Why must use or occupancy be indicated on the application?", choices:["Because it affects plumbing requirements","Because it's decorative","Because it changes paint color","Because it is fun"], answer:0, rationale:"Use or occupancy (house, store) changes plumbing design and rules."},
+  {id:69, part:2, q:"If a permit is abandoned, within how many days may it expire?", choices:["Within 120 days","Within 10 days","Within 2 years","Within 1 day"], answer:0, rationale:"Abandoned permits may expire within 120 days of suspension."},
+  {id:70, part:2, q:"How many sets does the applicant get back after approval?", choices:["Two sets","One set","All sets","Zero sets"], answer:0, rationale:"Two sets are returned to the applicant."},
+  {id:71, part:2, q:"Temporary connection endorsement should be shown by whom?", choices:["Administrative Authority","The owner","The plumber only","A neighbor"], answer:0, rationale:"The Administrative Authority endorses temporary connections."},
+  {id:72, part:2, q:"Permission for starting part of the system is called what?", choices:["Partial Permit","Full Permit","Temporary Permit","No Permit"], answer:0, rationale:"Starting part of the system with permission is a Partial Permit."},
+  {id:73, part:2, q:"Is maintenance on existing plumbing included in application types?", choices:["Yes — maintenance is listed","No, never","Only on weekends","Only for big buildings"], answer:0, rationale:"Maintenance is explicitly listed as a type of application."},
+  {id:74, part:2, q:"You forgot to sign and seal the plans. What is required?", choices:["Plans must be signed and sealed by the RLM","Signing is optional","Only the owner signs","No one signs"], answer:0, rationale:"Regulations require the RLM to sign and seal the plans."},
+  {id:75, part:2, q:"Who approves permanent connection to utilities?", choices:["Administrative Authority","The plumber alone","The owner","The neighbor"], answer:0, rationale:"Permanent connections must be approved by the Administrative Authority."}
+];
+
+// App state
+let pool = [];
+let current = 0;
+let userAns = {}; // id -> selected index
+let checkedMap = {}; // id -> whether checked
+let score = 0;
+
+// elements
+const startBtn = document.getElementById('startBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const startScreen = document.getElementById('startScreen');
+const quizScreen = document.getElementById('quizScreen');
+const endScreen = document.getElementById('endScreen');
+const qIndexEl = document.getElementById('qIndex');
+const qCountEl = document.getElementById('qCount');
+const qTextEl = document.getElementById('questionText');
+const optionsForm = document.getElementById('optionsForm');
+const rationaleBox = document.getElementById('rationaleBox');
+const rationaleText = document.getElementById('rationaleText');
+const rationaleTitle = document.getElementById('rationaleTitle');
+const backBtn = document.getElementById('backBtn');
+const nextBtn = document.getElementById('nextBtn');
+const checkBtn = document.getElementById('checkBtn');
+const scoreDisp = document.getElementById('scoreDisp');
+const scoreSimple = document.getElementById('scoreSimple');
+const qPartEl = document.getElementById('qPart');
+const totalCnt = document.getElementById('totalCnt');
+const qCount2 = document.getElementById('qCount2');
+
+totalCnt.textContent = QUESTIONS.length;
+qCountEl.textContent = QUESTIONS.length;
+qCount2.textContent = QUESTIONS.length;
+
+// utility shuffle
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+// prepare exam: deep copy, shuffle, randomize choices per question
+function prepareExam(){
+  pool = JSON.parse(JSON.stringify(QUESTIONS));
+  shuffle(pool);
+  pool.forEach(q=>{
+    // shuffle choices and adjust answer index
+    const mapped = q.choices.map((c,i)=>({c,i}));
+    shuffle(mapped);
+    const newChoices = mapped.map(m=>m.c);
+    const newAnswer = mapped.findIndex(m=>m.i===q.answer);
+    q._origChoices = q.choices;
+    q.choices = newChoices;
+    q.answer = newAnswer;
+  });
+}
+
+// render current question
+function render(){
+  const q = pool[current];
+  qIndexEl.textContent = current+1;
+  qTextEl.textContent = q.q;
+  qPartEl.textContent = q.part;
+  optionsForm.innerHTML = '';
+  rationaleBox.classList.remove('show');
+  rationaleBox.style.display = 'none';
+
+  q.choices.forEach((choice, idx)=>{
+    const id = `opt-${q.id}-${idx}`;
+    const div = document.createElement('label');
+    div.className = 'option';
+    div.setAttribute('data-idx', idx);
+    div.setAttribute('tabindex', 0);
+    div.innerHTML = `<input type="radio" name="option" value="${idx}" onchange="autoCheck(Array.from(document.getElementsByName(\'option\')).indexOf(this))" aria-label="${choice}" ${userAns[q.id]===idx ? 'checked' : ''}/> <span class="option-label">${String.fromCharCode(65+idx)}. ${choice}</span>`;
+    // click behavior
+    div.addEventListener('click', (e)=>{
+      if(checkedMap[q.id]) return; // if already checked, still allow selection? user wanted to allow reselection before moving on, but once checked we lock until next? They wanted allow reselect before moving on; they also wanted ability to reselect before Check - we already enforce that by only locking when user clicks Check. So here we don't lock on click.
+      const input = div.querySelector('input');
+      input.checked = true;
+      userAns[q.id] = Number(input.value);
+    });
+    // keyboard access
+    div.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); div.click(); }
+    });
+
+    // mark if previously checked to show feedback
+    if(checkedMap[q.id]){
+      const correctIdx = q.answer;
+      if(idx === correctIdx) div.classList.add('correct');
+      if(userAns[q.id]===idx && userAns[q.id]!==correctIdx) div.classList.add('incorrect');
+    }
+
+    optionsForm.appendChild(div);
+  });
+
+  // update score display (count of checked correct so far)
+  updateScore();
+}
+
+// update score based on checked items
+function updateScore(){
+  let s=0;
+  let checkedCount = 0;
+  pool.forEach(q=>{
+    if(checkedMap[q.id]){
+      checkedCount++;
+      if(userAns[q.id]===q.answer) s++;
+    }
+  });
+  score = s;
+  scoreDisp.textContent = `Answered correct so far: ${s} (checked ${checkedCount})`;
+  scoreSimple.textContent = `${s}`;
+}
+
+// handlers
+startBtn.addEventListener('click', ()=>{
+  prepareExam();
+  startScreen.style.display = 'none';
+  quizScreen.style.display = 'block';
+  endScreen.style.display = 'none';
+  current = 0;
+  userAns = {};
+  checkedMap = {};
+  score = 0;
+  render();
+});
+
+shuffleBtn.addEventListener('click', ()=>{
+  // just shuffle preview
+  const preview = JSON.parse(JSON.stringify(QUESTIONS));
+  shuffle(preview);
+  alert('Questions preview shuffled. Press Start Exam to begin the real shuffled exam.');
+});
+
+backBtn.addEventListener('click', ()=>{
+  if(current>0){ current--; render(); }
+});
+
+nextBtn.addEventListener('click', ()=>{
+  if(current < pool.length-1){ current++; render(); }
+});
+
+checkBtn.addEventListener('click', ()=>{
+  const q = pool[current];
+  const sel = userAns[q.id];
+  if(sel===undefined || sel===null){
+    alert('Please select an answer before checking.');
+    return;
+  }
+  // show feedback and rationale
+  checkedMap[q.id] = true;
+  // highlight options
+  const optionEls = optionsForm.querySelectorAll('.option');
+  optionEls.forEach(el=>{
+    const idx = Number(el.getAttribute('data-idx'));
+    el.classList.remove('correct','incorrect');
+    if(idx === q.answer) el.classList.add('correct');
+    if(userAns[q.id]===idx && userAns[q.id]!==q.answer) el.classList.add('incorrect');
+  });
+  rationaleText.textContent = q.rationale;
+  rationaleBox.classList.add('show');
+  rationaleBox.style.display = 'block';
+  updateScore();
+});
+
+// finalize - show end screen and answers
+function finalize(){
+  // compute final score: based on checked answers only? User may not check all; we'll count correct among those checked, but final should count based on current selected answers even if unchecked.
+  let correct=0;
+  pool.forEach(q=>{
+    if(userAns[q.id] !== undefined && userAns[q.id] === q.answer) correct++;
+  });
+  // show end screen
+  quizScreen.style.display = 'none';
+  endScreen.style.display = 'block';
+  document.getElementById('finalScore').textContent = `You scored ${correct} out of ${pool.length} (${Math.round(correct/pool.length*100)}%)`;
+  document.getElementById('finalPercent').textContent = `Answered correct (based on your current selections).`;
+
+  const answersList = document.getElementById('answersList');
+  answersList.innerHTML = '';
+  pool.forEach((q, idx)=>{
+    const item = document.createElement('div');
+    item.className = 'answer-item';
+    const qtitle = document.createElement('div'); qtitle.className='q'; qtitle.textContent = `${idx+1}. ${q.q}`;
+    const choicesDiv = document.createElement('div');
+    q.choices.forEach((c,i)=>{
+      const line = document.createElement('div');
+      line.textContent = `${String.fromCharCode(65+i)}. ${c}`;
+      if(i===q.answer) line.style.background = 'var(--green)';
+      if(userAns[q.id]===i && userAns[q.id]!==q.answer) line.style.background = 'var(--red)';
+      line.style.padding = '6px'; line.style.borderRadius='6px'; line.style.marginTop='6px';
+      choicesDiv.appendChild(line);
+    });
+    const your = document.createElement('div'); your.className='small-muted'; your.textContent = `Your answer: ${userAns[q.id]===undefined ? 'No answer' : String.fromCharCode(65+userAns[q.id]) + '. ' + q.choices[userAns[q.id]]}`;
+    const corr = document.createElement('div'); corr.className='small-muted'; corr.textContent = `Correct: ${String.fromCharCode(65+q.answer)}. ${q.choices[q.answer]}`;
+    const rat = document.createElement('div'); rat.className='small-muted'; rat.textContent = `Rationale: ${q.rationale}`;
+    item.appendChild(qtitle); item.appendChild(choicesDiv); item.appendChild(your); item.appendChild(corr); item.appendChild(rat);
+    answersList.appendChild(item);
+  });
+
+  // prepare CSV
+  window._csv = buildCSV(pool, userAns);
+}
+
+document.getElementById('downloadCsvBtn').addEventListener('click', ()=>{
+  if(!window._csv){
+    alert('Complete the exam (or click Finish) to generate CSV.');
+    return;
+  }
+  const blob = new Blob([window._csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0,19).replace(/:/g,'-');
+  a.download = `plumbing_exam_results_${ts}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('tryAgainBtn').addEventListener('click', ()=>{
+  if(!confirm('Start again? This will reshuffle questions and clear answers.')) return;
+  endScreen.style.display = 'none';
+  startScreen.style.display = 'block';
+});
+
+// keyboard: press F to finish exam anytime
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='F' || e.key==='f'){
+    if(confirm('Finish the exam now?')) finalize();
+  }
+});
+
+// create CSV string
+function buildCSV(pool, answers){
+  const header = ['Q#','Question','ChoiceA','ChoiceB','ChoiceC','ChoiceD','CorrectChoice','YourChoice','Correct?','Rationale'];
+  const rows = [header];
+  pool.forEach((q, idx)=>{
+    const correctIdx = q.answer;
+    const userSel = answers[q.id] === undefined ? '' : answers[q.id];
+    const correctMark = (userSel !== '' && Number(userSel) === correctIdx) ? 'Yes' : 'No';
+    const row = [
+      idx+1,
+      q.q.replace(/"/g,'""'),
+      q.choices[0]||'',
+      q.choices[1]||'',
+      q.choices[2]||'',
+      q.choices[3]||'',
+      `${String.fromCharCode(65+correctIdx)}. ${q.choices[correctIdx]||''}`,
+      userSel==='' ? '' : `${String.fromCharCode(65+userSel)}. ${q.choices[userSel]||''}`,
+      correctMark,
+      q.rationale.replace(/"/g,'""')
+    ];
+    rows.push(row.map(cell=>`"${String(cell)}"`).join(','));
+  });
+  return rows.join('\r\n');
+}
+
+// For convenience, provide a Finish button by double-clicking the header or pressing F, or call finalize manually.
+// But let's also add a visible Finish button after last question
+// Add a small observer to show finish option when on last Q
+const obsInterval = setInterval(()=>{
+  if(pool.length && current === pool.length-1){
+    // show a small finish hint
+    checkBtn.textContent = 'Check Answer';
+    nextBtn.textContent = 'Finish';
+    nextBtn.classList.remove('btn');
+    nextBtn.classList.add('btn');
+    // override next behavior to finalize when on last
+    nextBtn.onclick = ()=>{
+      if(current < pool.length-1){ current++; render(); } else {
+        if(confirm('Finish the exam now?')) finalize();
+      }
+    };
+  } else {
+    nextBtn.textContent = 'Next';
+    nextBtn.onclick = ()=>{ if(current < pool.length-1){ current++; render(); } };
+  }
+},200);
+
+// expose finalize to global in case user wants to call from console
+window.finalizeExam = finalize;
+
+
+function autoCheck(selectedIndex) {
+    let currentQuestion = shuffledQuestions[currentQuestionIndex];
+    let options = document.getElementsByName('option');
+    let selectedValue = options[selectedIndex].value;
+    let feedback = document.getElementById('feedback');
+    let rationaleBox = document.getElementById('rationale');
+    let allOptions = document.querySelectorAll('input[name="option"]');
+
+    // Lock all options
+    allOptions.forEach(opt => opt.disabled = true);
+
+    if (selectedValue === currentQuestion.answer) {
+        options[selectedIndex].parentElement.classList.add('bg-green-200');
+        feedback.textContent = "Correct!";
+        feedback.className = "text-green-600 font-bold mt-2";
+        score++;
+    } else {
+        options[selectedIndex].parentElement.classList.add('bg-red-200');
+        feedback.textContent = "Wrong!";
+        feedback.className = "text-red-600 font-bold mt-2";
+        // highlight correct answer
+        allOptions.forEach((opt, idx) => {
+            if (opt.value === currentQuestion.answer) {
+                opt.parentElement.classList.add('bg-green-200');
+            }
+        });
+    }
+    rationaleBox.textContent = currentQuestion.rationale;
+    userAnswers[currentQuestionIndex] = selectedValue;
+}
+</script>
+</body>
+</html>
